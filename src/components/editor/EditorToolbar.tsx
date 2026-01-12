@@ -1,18 +1,22 @@
-import { 
-  MousePointer2, 
-  Type, 
-  Square, 
-  Image, 
-  ZoomIn, 
-  ZoomOut, 
-  Undo2, 
+import {
+  MousePointer2,
+  Type,
+  Square,
+  Image,
+  ZoomIn,
+  ZoomOut,
+  Undo2,
   Redo2,
   Download,
   Upload,
   Layers,
   ArrowUpToLine,
   ArrowDownToLine,
-  Trash2
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -27,19 +31,21 @@ interface EditorToolbarProps {
   onBringToFront?: () => void;
   onSendToBack?: () => void;
   onClearCanvas?: () => void;
+  onNudge?: (dx: number, dy: number) => void;
   hasSelection?: boolean;
   hasDocument?: boolean;
 }
 
-export function EditorToolbar({ 
-  zoom, 
-  onZoomIn, 
-  onZoomOut, 
-  onImport, 
+export function EditorToolbar({
+  zoom,
+  onZoomIn,
+  onZoomOut,
+  onImport,
   onExport,
   onBringToFront,
   onSendToBack,
   onClearCanvas,
+  onNudge,
   hasSelection = false,
   hasDocument = false,
 }: EditorToolbarProps) {
@@ -84,10 +90,10 @@ export function EditorToolbar({
       <div className="flex items-center gap-0.5 px-2">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="w-9 h-9 p-0" 
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-9 h-9 p-0"
               disabled={!hasSelection}
               onClick={onBringToFront}
             >
@@ -98,10 +104,10 @@ export function EditorToolbar({
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="w-9 h-9 p-0" 
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-9 h-9 p-0"
               disabled={!hasSelection}
               onClick={onSendToBack}
             >
@@ -109,6 +115,68 @@ export function EditorToolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent>Send to Back</TooltipContent>
+        </Tooltip>
+      </div>
+
+      <Separator orientation="vertical" className="h-6 bg-border" />
+
+      {/* Nudge */}
+      <div className="flex items-center gap-0.5 px-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-9 h-9 p-0"
+              disabled={!hasSelection || !onNudge}
+              onClick={() => onNudge?.(0, -10)}
+            >
+              <ArrowUp className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Move Up</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-9 h-9 p-0"
+              disabled={!hasSelection || !onNudge}
+              onClick={() => onNudge?.(0, 10)}
+            >
+              <ArrowDown className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Move Down</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-9 h-9 p-0"
+              disabled={!hasSelection || !onNudge}
+              onClick={() => onNudge?.(-10, 0)}
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Move Left</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-9 h-9 p-0"
+              disabled={!hasSelection || !onNudge}
+              onClick={() => onNudge?.(10, 0)}
+            >
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Move Right</TooltipContent>
         </Tooltip>
       </div>
 
