@@ -19,6 +19,10 @@ export function DesignEditor() {
     stopTextEditing,
     updateElement,
     updateElementStyle,
+    bringToFront,
+    sendToBack,
+    clearCanvas,
+    addFont,
   } = useEditorState();
 
   const [showTemplateGallery, setShowTemplateGallery] = useState(true);
@@ -103,6 +107,35 @@ export function DesignEditor() {
     }
   }, [state.selection.selectedIds, updateElementStyle]);
 
+  const handleUpdateAttribute = useCallback((key: string, value: string) => {
+    if (state.selection.selectedIds.length === 1) {
+      const elementId = state.selection.selectedIds[0];
+      const element = findElementById(state.document?.elements || [], elementId);
+      if (element) {
+        updateElement(elementId, { 
+          attributes: { ...element.attributes, [key]: value } 
+        });
+      }
+    }
+  }, [state.selection.selectedIds, state.document, updateElement]);
+
+  const handleBringToFront = useCallback(() => {
+    if (state.selection.selectedIds.length === 1) {
+      bringToFront(state.selection.selectedIds[0]);
+    }
+  }, [state.selection.selectedIds, bringToFront]);
+
+  const handleSendToBack = useCallback(() => {
+    if (state.selection.selectedIds.length === 1) {
+      sendToBack(state.selection.selectedIds[0]);
+    }
+  }, [state.selection.selectedIds, sendToBack]);
+
+  const handleClearCanvas = useCallback(() => {
+    clearCanvas();
+    toast.success('Canvas cleared');
+  }, [clearCanvas]);
+
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       <input
@@ -119,6 +152,11 @@ export function DesignEditor() {
         onZoomOut={() => setZoom(state.zoom - 0.1)}
         onImport={handleImport}
         onExport={handleExport}
+        onBringToFront={handleBringToFront}
+        onSendToBack={handleSendToBack}
+        onClearCanvas={handleClearCanvas}
+        hasSelection={state.selection.selectedIds.length > 0}
+        hasDocument={!!state.document}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -147,6 +185,8 @@ export function DesignEditor() {
         <PropertiesPanel
           selectedElement={selectedElement}
           onUpdateStyle={handleUpdateStyle}
+          onUpdateAttribute={handleUpdateAttribute}
+          onAddFont={addFont}
         />
       </div>
 
