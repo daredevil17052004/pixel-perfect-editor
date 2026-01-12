@@ -26,9 +26,19 @@ interface AddElementsPanelProps {
 }
 
 let elementIdCounter = 1000;
+let elementPositionOffset = 0;
 
 function generateElementId(): string {
   return `new-el-${++elementIdCounter}`;
+}
+
+function getNextPosition(): { left: string; top: string } {
+  const offset = (elementPositionOffset % 10) * 20; // Stagger elements
+  elementPositionOffset++;
+  return {
+    left: `${50 + offset}px`,
+    top: `${50 + offset}px`,
+  };
 }
 
 const TEXT_ELEMENTS = [
@@ -142,12 +152,20 @@ export function AddElementsPanel({ onAddElement }: AddElementsPanelProps) {
   const handleAddText = (textConfig: typeof TEXT_ELEMENTS[0]) => {
     const textNodeId = generateElementId();
     const elementId = generateElementId();
+    const pos = getNextPosition();
     
     const element: ElementNode = {
       id: elementId,
       tagName: textConfig.tagName,
       attributes: {},
-      styles: { ...textConfig.defaultStyles, 'position': 'relative' },
+      styles: { 
+        ...textConfig.defaultStyles, 
+        'position': 'absolute',
+        'left': pos.left,
+        'top': pos.top,
+        'cursor': 'move',
+        'user-select': 'none',
+      },
       children: [
         {
           id: textNodeId,
@@ -167,11 +185,18 @@ export function AddElementsPanel({ onAddElement }: AddElementsPanelProps) {
   };
 
   const handleAddShape = (shapeConfig: typeof SHAPE_ELEMENTS[0]) => {
+    const pos = getNextPosition();
     const element: ElementNode = {
       id: generateElementId(),
       tagName: 'div',
       attributes: {},
-      styles: { ...shapeConfig.defaultStyles, 'position': 'relative' },
+      styles: { 
+        ...shapeConfig.defaultStyles, 
+        'position': 'absolute',
+        'left': pos.left,
+        'top': pos.top,
+        'cursor': 'move',
+      },
       children: [],
     };
     
@@ -180,18 +205,23 @@ export function AddElementsPanel({ onAddElement }: AddElementsPanelProps) {
   };
 
   const handleAddImage = (url: string) => {
+    const pos = getNextPosition();
     const element: ElementNode = {
       id: generateElementId(),
       tagName: 'img',
       attributes: { 
         src: url, 
-        alt: 'Uploaded image' 
+        alt: 'Uploaded image',
+        draggable: 'false',
       },
       styles: { 
         'max-width': '300px', 
         'height': 'auto',
-        'position': 'relative',
-        'display': 'block'
+        'position': 'absolute',
+        'left': pos.left,
+        'top': pos.top,
+        'cursor': 'move',
+        'display': 'block',
       },
       children: [],
     };

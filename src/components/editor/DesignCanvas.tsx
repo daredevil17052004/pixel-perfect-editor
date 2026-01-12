@@ -69,6 +69,7 @@ export function DesignCanvas({
               padding: 0; 
               background: transparent;
               min-height: 100vh;
+              position: relative;
             }
             [data-editor-id] {
               cursor: pointer;
@@ -77,6 +78,9 @@ export function DesignCanvas({
             [data-editor-id]:hover {
               outline: 1px dashed hsl(217, 91%, 60%);
               outline-offset: 1px;
+            }
+            [data-editor-id][style*="position: absolute"] {
+              cursor: move;
             }
             ${document.styles}
           </style>
@@ -251,31 +255,79 @@ export function DesignCanvas({
       if (!el) return;
 
       if (dragState.handle === 'move') {
-        // Update position
-        const currentTransform = el.style.transform || '';
-        const match = currentTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
-        let currentX = 0, currentY = 0;
-        if (match) {
-          currentX = parseFloat(match[1]) || 0;
-          currentY = parseFloat(match[2]) || 0;
+        // Check if element is absolutely positioned
+        const computedStyle = iframeRef.current.contentWindow?.getComputedStyle(el);
+        const position = computedStyle?.position;
+        
+        if (position === 'absolute') {
+          // For absolute positioned elements, update left/top
+          const currentLeft = parseFloat(el.style.left) || 0;
+          const currentTop = parseFloat(el.style.top) || 0;
+          
+          // Get stored initial values or set them
+          if (!el.dataset.dragStartLeft) {
+            el.dataset.dragStartLeft = String(currentLeft);
+            el.dataset.dragStartTop = String(currentTop);
+          }
+          
+          const startLeft = parseFloat(el.dataset.dragStartLeft);
+          const startTop = parseFloat(el.dataset.dragStartTop);
+          
+          el.style.left = `${startLeft + deltaX}px`;
+          el.style.top = `${startTop + deltaY}px`;
+        } else {
+          // For other elements, use transform
+          el.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
         }
-        el.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
       } else if (dragState.handle) {
         // Resize logic
         const currentWidth = el.offsetWidth;
         const currentHeight = el.offsetHeight;
         
+        // Store initial dimensions
+        if (!el.dataset.dragStartWidth) {
+          el.dataset.dragStartWidth = String(currentWidth);
+          el.dataset.dragStartHeight = String(currentHeight);
+          el.dataset.dragStartLeft = el.style.left || '0';
+          el.dataset.dragStartTop = el.style.top || '0';
+        }
+        
+        const startWidth = parseFloat(el.dataset.dragStartWidth);
+        const startHeight = parseFloat(el.dataset.dragStartHeight);
+        const startLeft = parseFloat(el.dataset.dragStartLeft) || 0;
+        const startTop = parseFloat(el.dataset.dragStartTop) || 0;
+        
+        let newWidth = startWidth;
+        let newHeight = startHeight;
+        let newLeft = startLeft;
+        let newTop = startTop;
+        
         if (dragState.handle.includes('right')) {
-          el.style.width = `${currentWidth + deltaX}px`;
+          newWidth = startWidth + deltaX;
         }
         if (dragState.handle.includes('bottom')) {
-          el.style.height = `${currentHeight + deltaY}px`;
+          newHeight = startHeight + deltaY;
         }
         if (dragState.handle.includes('left')) {
-          el.style.width = `${currentWidth - deltaX}px`;
+          newWidth = startWidth - deltaX;
+          newLeft = startLeft + deltaX;
         }
         if (dragState.handle.includes('top')) {
-          el.style.height = `${currentHeight - deltaY}px`;
+          newHeight = startHeight - deltaY;
+          newTop = startTop + deltaY;
+        }
+        
+        if (newWidth > 10) {
+          el.style.width = `${newWidth}px`;
+          if (dragState.handle.includes('left')) {
+            el.style.left = `${newLeft}px`;
+          }
+        }
+        if (newHeight > 10) {
+          el.style.height = `${newHeight}px`;
+          if (dragState.handle.includes('top')) {
+            el.style.top = `${newTop}px`;
+          }
         }
       }
     };
@@ -286,11 +338,25 @@ export function DesignCanvas({
         const el = iframeRef.current.contentDocument.querySelector(`[data-editor-id="${dragState.elementId}"]`) as HTMLElement;
         if (el) {
           if (dragState.handle === 'move') {
-            onUpdateElementStyle(dragState.elementId, 'transform', el.style.transform);
+            const computedStyle = iframeRef.current.contentWindow?.getComputedStyle(el);
+            if (computedStyle?.position === 'absolute') {
+              onUpdateElementStyle(dragState.elementId, 'left', el.style.left);
+              onUpdateElementStyle(dragState.elementId, 'top', el.style.top);
+            } else {
+              onUpdateElementStyle(dragState.elementId, 'transform', el.style.transform);
+            }
           } else {
             if (el.style.width) onUpdateElementStyle(dragState.elementId, 'width', el.style.width);
             if (el.style.height) onUpdateElementStyle(dragState.elementId, 'height', el.style.height);
+            if (el.style.left) onUpdateElementStyle(dragState.elementId, 'left', el.style.left);
+            if (el.style.top) onUpdateElementStyle(dragState.elementId, 'top', el.style.top);
           }
+          
+          // Clean up drag data attributes
+          delete el.dataset.dragStartLeft;
+          delete el.dataset.dragStartTop;
+          delete el.dataset.dragStartWidth;
+          delete el.dataset.dragStartHeight;
         }
       }
       

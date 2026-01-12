@@ -239,16 +239,21 @@ export function useEditorState() {
     });
   }, []);
 
-  const updateElementStyle = useCallback((elementId: string, styleKey: string, value: string) => {
+  const updateElementStyle = useCallback((elementId: string, updates: Record<string, string> | string, value?: string) => {
     setState((prev) => {
       if (!prev.document) return prev;
+      
+      // Support both single key-value and object updates
+      const styleUpdates: Record<string, string> = typeof updates === 'string' 
+        ? { [updates]: value! } 
+        : updates;
 
       const updateNode = (nodes: ElementNode[]): ElementNode[] => {
         return nodes.map((node) => {
           if (node.id === elementId) {
             return {
               ...node,
-              styles: { ...node.styles, [styleKey]: value },
+              styles: { ...node.styles, ...styleUpdates },
             };
           }
           if (node.children.length > 0) {
