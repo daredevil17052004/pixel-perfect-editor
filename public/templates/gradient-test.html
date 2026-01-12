@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Design</title>
+    <style>
+        .poster {
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            position: relative;
+            overflow: hidden;
+            font-family: sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        h1 {
+            color: white;
+            font-size: 60px;
+            text-transform: uppercase;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin: 0;
+            z-index: 2;
+        }
+        p {
+            color: #ffd700;
+            font-size: 24px;
+            margin-top: 10px;
+            z-index: 2;
+        }
+        .image-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            z-index: 1;
+        }
+        img {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="poster">
+        <h1>Creative Design</h1>
+        <p>Imported Successfully</p>
+        
+        <div class="image-container">
+            <img src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=400&q=80" alt="Texture">
+        </div>
+    </div>
+</body>
+</html>
