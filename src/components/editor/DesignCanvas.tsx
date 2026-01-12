@@ -155,17 +155,19 @@ export function DesignCanvas({
     };
   }, [document, onSelectElement, onHoverElement, onStartTextEditing, onStopTextEditing, onUpdateElement, editingElementId]);
 
-  // Update selection rectangles
+  // Update selection rectangles relative to container
   useEffect(() => {
-    if (!iframeRef.current) return;
+    if (!iframeRef.current || !containerRef.current) return;
 
     const iframeDoc = iframeRef.current.contentDocument;
     if (!iframeDoc) return;
 
     const updateRects = () => {
       const iframe = iframeRef.current;
-      if (!iframe) return;
+      const container = containerRef.current;
+      if (!iframe || !container) return;
 
+      const containerRect = container.getBoundingClientRect();
       const iframeRect = iframe.getBoundingClientRect();
       const newRects = new Map<string, DOMRect>();
 
@@ -173,9 +175,10 @@ export function DesignCanvas({
         const el = iframeDoc.querySelector(`[data-editor-id="${id}"]`);
         if (el) {
           const rect = el.getBoundingClientRect();
+          // Calculate position relative to container, accounting for iframe position
           newRects.set(id, new DOMRect(
-            rect.left + iframeRect.left,
-            rect.top + iframeRect.top,
+            iframeRect.left - containerRect.left + rect.left + container.scrollLeft,
+            iframeRect.top - containerRect.top + rect.top + container.scrollTop,
             rect.width,
             rect.height
           ));
@@ -190,8 +193,8 @@ export function DesignCanvas({
         if (el) {
           const rect = el.getBoundingClientRect();
           setHoverRect(new DOMRect(
-            rect.left + iframeRect.left,
-            rect.top + iframeRect.top,
+            iframeRect.left - containerRect.left + rect.left + container.scrollLeft,
+            iframeRect.top - containerRect.top + rect.top + container.scrollTop,
             rect.width,
             rect.height
           ));
@@ -208,8 +211,15 @@ export function DesignCanvas({
     // Update on scroll/resize
     const resizeObserver = new ResizeObserver(updateRects);
     resizeObserver.observe(iframeRef.current);
+    
+    // Also update on container scroll
+    containerRef.current.addEventListener('scroll', updateRects);
+    const currentContainer = containerRef.current;
 
-    return () => resizeObserver.disconnect();
+    return () => {
+      resizeObserver.disconnect();
+      currentContainer?.removeEventListener('scroll', updateRects);
+    };
   }, [selectedIds, hoveredId, document]);
 
   // Handle drag/resize

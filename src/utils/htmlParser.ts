@@ -105,9 +105,9 @@ export function parseHTML(htmlString: string): DesignDocument {
     elements.push(parseElement(child));
   }
 
-  // Try to determine dimensions from the first container
-  let width = 800;
-  let height = 600;
+  // Try to determine dimensions from the first container - default to larger canvas
+  let width = 1200;
+  let height = 800;
   
   if (elements.length > 0) {
     const firstEl = doc.body.firstElementChild;
