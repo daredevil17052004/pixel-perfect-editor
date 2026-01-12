@@ -17,13 +17,18 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { FontPicker } from './FontPicker';
+import { ImageUpload } from './ImageUpload';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface PropertiesPanelProps {
   selectedElement: ElementNode | null;
   onUpdateStyle: (key: string, value: string) => void;
+  onUpdateAttribute?: (key: string, value: string) => void;
+  onAddFont?: (fontUrl: string) => void;
 }
 
-export function PropertiesPanel({ selectedElement, onUpdateStyle }: PropertiesPanelProps) {
+export function PropertiesPanel({ selectedElement, onUpdateStyle, onUpdateAttribute, onAddFont }: PropertiesPanelProps) {
   if (!selectedElement) {
     return (
       <div className="w-72 bg-card border-l border-border flex flex-col">
@@ -41,6 +46,22 @@ export function PropertiesPanel({ selectedElement, onUpdateStyle }: PropertiesPa
 
   const styles = selectedElement.styles;
   const isTextElement = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'span'].includes(selectedElement.tagName);
+  const isImageElement = selectedElement.tagName === 'img';
+
+  const handleFontChange = (font: string) => {
+    onUpdateStyle('font-family', font);
+    // Add font to document
+    if (onAddFont) {
+      const fontUrl = `https://fonts.googleapis.com/css2?family=${font.replace(/\s+/g, '+')}:wght@400;700&display=swap`;
+      onAddFont(fontUrl);
+    }
+  };
+
+  const handleImageSelect = (url: string) => {
+    if (onUpdateAttribute) {
+      onUpdateAttribute('src', url);
+    }
+  };
 
   return (
     <div className="w-72 bg-card border-l border-border flex flex-col">
@@ -57,6 +78,42 @@ export function PropertiesPanel({ selectedElement, onUpdateStyle }: PropertiesPa
 
           <Separator />
 
+          {/* Image properties */}
+          {isImageElement && (
+            <>
+              <div className="space-y-3">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Image</Label>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs">Source</Label>
+                  <Input 
+                    className="h-8 text-xs"
+                    value={selectedElement.attributes.src || ''}
+                    onChange={(e) => onUpdateAttribute?.('src', e.target.value)}
+                    placeholder="Image URL"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Replace Image</Label>
+                  <ImageUpload onImageSelect={handleImageSelect} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Alt Text</Label>
+                  <Input 
+                    className="h-8 text-xs"
+                    value={selectedElement.attributes.alt || ''}
+                    onChange={(e) => onUpdateAttribute?.('alt', e.target.value)}
+                    placeholder="Alt text for accessibility"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+            </>
+          )}
+
           {/* Typography */}
           {isTextElement && (
             <>
@@ -65,22 +122,19 @@ export function PropertiesPanel({ selectedElement, onUpdateStyle }: PropertiesPa
                 
                 <div className="space-y-2">
                   <Label className="text-xs">Font Family</Label>
-                  <Select
-                    value={styles['font-family']?.replace(/['"]/g, '') || 'Inter'}
-                    onValueChange={(value) => onUpdateStyle('font-family', value)}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Inter">Inter</SelectItem>
-                      <SelectItem value="Arial">Arial</SelectItem>
-                      <SelectItem value="Georgia">Georgia</SelectItem>
-                      <SelectItem value="Oswald">Oswald</SelectItem>
-                      <SelectItem value="Anton">Anton</SelectItem>
-                      <SelectItem value="Shrikhand">Shrikhand</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full h-8 text-xs justify-between" style={{ fontFamily: styles['font-family']?.replace(/['"]/g, '') || 'Inter' }}>
+                        {styles['font-family']?.replace(/['"]/g, '') || 'Inter'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2" align="start">
+                      <FontPicker 
+                        value={styles['font-family']?.replace(/['"]/g, '') || 'Inter'}
+                        onChange={handleFontChange}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">

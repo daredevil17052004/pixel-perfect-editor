@@ -103,6 +103,85 @@ export function useEditorState() {
     });
   }, []);
 
+  const bringToFront = useCallback((elementId: string) => {
+    setState((prev) => {
+      if (!prev.document) return prev;
+
+      const reorderNode = (nodes: ElementNode[]): ElementNode[] => {
+        const index = nodes.findIndex((n) => n.id === elementId);
+        if (index !== -1) {
+          const node = nodes[index];
+          return [...nodes.slice(0, index), ...nodes.slice(index + 1), node];
+        }
+        return nodes.map((node) => ({
+          ...node,
+          children: reorderNode(node.children),
+        }));
+      };
+
+      return {
+        ...prev,
+        document: {
+          ...prev.document,
+          elements: reorderNode(prev.document.elements),
+        },
+      };
+    });
+  }, []);
+
+  const sendToBack = useCallback((elementId: string) => {
+    setState((prev) => {
+      if (!prev.document) return prev;
+
+      const reorderNode = (nodes: ElementNode[]): ElementNode[] => {
+        const index = nodes.findIndex((n) => n.id === elementId);
+        if (index !== -1) {
+          const node = nodes[index];
+          return [node, ...nodes.slice(0, index), ...nodes.slice(index + 1)];
+        }
+        return nodes.map((node) => ({
+          ...node,
+          children: reorderNode(node.children),
+        }));
+      };
+
+      return {
+        ...prev,
+        document: {
+          ...prev.document,
+          elements: reorderNode(prev.document.elements),
+        },
+      };
+    });
+  }, []);
+
+  const clearCanvas = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      document: null,
+      selection: { selectedIds: [], hoveredId: null },
+    }));
+  }, []);
+
+  const addFont = useCallback((fontUrl: string) => {
+    setState((prev) => {
+      if (!prev.document) return prev;
+      
+      const fontImport = `@import url('${fontUrl}')`;
+      if (prev.document.fonts.some(f => f.includes(fontUrl))) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        document: {
+          ...prev.document,
+          fonts: [...prev.document.fonts, fontImport],
+        },
+      };
+    });
+  }, []);
+
   const updateElementStyle = useCallback((elementId: string, styleKey: string, value: string) => {
     setState((prev) => {
       if (!prev.document) return prev;
@@ -143,5 +222,9 @@ export function useEditorState() {
     stopTextEditing,
     updateElement,
     updateElementStyle,
+    bringToFront,
+    sendToBack,
+    clearCanvas,
+    addFont,
   };
 }

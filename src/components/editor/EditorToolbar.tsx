@@ -9,7 +9,10 @@ import {
   Redo2,
   Download,
   Upload,
-  Layers
+  Layers,
+  ArrowUpToLine,
+  ArrowDownToLine,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -21,9 +24,25 @@ interface EditorToolbarProps {
   onZoomOut: () => void;
   onImport: () => void;
   onExport: () => void;
+  onBringToFront?: () => void;
+  onSendToBack?: () => void;
+  onClearCanvas?: () => void;
+  hasSelection?: boolean;
+  hasDocument?: boolean;
 }
 
-export function EditorToolbar({ zoom, onZoomIn, onZoomOut, onImport, onExport }: EditorToolbarProps) {
+export function EditorToolbar({ 
+  zoom, 
+  onZoomIn, 
+  onZoomOut, 
+  onImport, 
+  onExport,
+  onBringToFront,
+  onSendToBack,
+  onClearCanvas,
+  hasSelection = false,
+  hasDocument = false,
+}: EditorToolbarProps) {
   const tools = [
     { icon: MousePointer2, label: 'Select', shortcut: 'V' },
     { icon: Type, label: 'Text', shortcut: 'T' },
@@ -61,6 +80,40 @@ export function EditorToolbar({ zoom, onZoomIn, onZoomOut, onImport, onExport }:
 
       <Separator orientation="vertical" className="h-6 bg-border" />
 
+      {/* Layer ordering */}
+      <div className="flex items-center gap-0.5 px-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-9 h-9 p-0" 
+              disabled={!hasSelection}
+              onClick={onBringToFront}
+            >
+              <ArrowUpToLine className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Bring to Front</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-9 h-9 p-0" 
+              disabled={!hasSelection}
+              onClick={onSendToBack}
+            >
+              <ArrowDownToLine className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Send to Back</TooltipContent>
+        </Tooltip>
+      </div>
+
+      <Separator orientation="vertical" className="h-6 bg-border" />
+
       {/* History */}
       <div className="flex items-center gap-0.5 px-2">
         <Tooltip>
@@ -82,6 +135,26 @@ export function EditorToolbar({ zoom, onZoomIn, onZoomOut, onImport, onExport }:
       </div>
 
       <div className="flex-1" />
+
+      {/* Clear Canvas */}
+      {hasDocument && (
+        <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-9 h-9 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" 
+                onClick={onClearCanvas}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Clear Canvas</TooltipContent>
+          </Tooltip>
+          <Separator orientation="vertical" className="h-6 bg-border" />
+        </>
+      )}
 
       {/* Zoom */}
       <div className="flex items-center gap-1">
