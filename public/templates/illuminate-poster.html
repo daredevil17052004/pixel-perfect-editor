@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Illuminate Your World Poster</title>
+    <!-- Importing a condensed font similar to the poster -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111; /* Fallback dark color */
+            font-family: 'Oswald', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .poster-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            aspect-ratio: 2/3;
+            /* Using the provided background image */
+            background-image: url('https://pb.creo-dev.onesol.in/api/files/pbc_1321337024/4weletpyrjeqazo/101_classic_bollywood_movies_the_best_hindi_movies_1950_1990_uv69awo5mi.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2xsZWN0aW9uSWQiOiJwYmNfMzE0MjYzNTgyMyIsImV4cCI6MTc2Nzg5NDg5MiwiaWQiOiJpeWpzMmR1aml5bXR6ejUiLCJ0eXBlIjoiZmlsZSJ9.sxialkl1Pf6VFi4c6ax5cedXvqzqmFTwZzCedRXHhvo&expires=86400');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            /* Fallback gradient in case image fails or to simulate the look */
+            background-color: #1a1a1a; 
+            color: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        /* The white border frame */
+        .frame {
+            position: absolute;
+            top: 20px;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            border: 4px solid white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 2;
+        }
+
+        /* Header Text */
+        h1 {
+            font-size: 3rem;
+            margin: 10px 0 20px 0;
+            text-transform: uppercase;
+            text-align: center;
+            line-height: 0.9;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .sub-text {
+            text-align: center;
+            font-size: 1.2rem;
+            line-height: 1.4;
+            letter-spacing: 0.5px;
+            font-weight: 400;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .sub-text div {
+            margin-bottom: 5px;
+        }
+
+        /* Main Content - Crown */
+        .crown-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            position: relative;
+        }
+
+        .crown-img {
+            width: 60%;
+            height: auto;
+            /* Adding a neon glow effect via CSS to enhance the PNG */
+            filter: drop-shadow(0 0 10px #00eaff) drop-shadow(0 0 20px #00eaff);
+        }
+
+        /* Footer Section */
+        .footer {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 10px;
+            padding: 0 10px;
+        }
+
+        /* Logo styling */
+        .logo {
+            font-family: 'Brush Script MT', 'cursive', sans-serif;
+            font-size: 3.5rem;
+            color: #e0ffff;
+            text-shadow: 0 0 10px #00eaff, 0 0 20px #0077be;
+            transform: rotate(-5deg);
+        }
+
+        /* CTA Button styling */
+        .cta {
+            font-size: 2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 500px) {
+            h1 { font-size: 2.2rem; }
+            .sub-text { font-size: 1rem; }
+            .logo { font-size: 2.5rem; }
+            .cta { font-size: 1.5rem; }
+            .frame { top: 10px; bottom: 10px; left: 10px; right: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="poster-container">
+        <div class="frame">
+            
+            <!-- Top Text Section -->
+            <h1>ILLUMINATE YOUR WORLD</h1>
+            
+            <div class="sub-text">
+                <div>ENERGY EFFICIENT</div>
+                <div>MODERN DESIGN</div>
+                <div>AFFORDABLE LUXURY</div>
+            </div>
+
+            <!-- Center Image -->
+            <div class="crown-container">
+                <img src="https://pb.creo-dev.onesol.in/api/files/pbc_1321337024/hagi1cij0ksuqyt/neon_crown_13g0z596ij.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2xsZWN0aW9uSWQiOiJwYmNfMzE0MjYzNTgyMyIsImV4cCI6MTc2Nzg5NDk1MSwiaWQiOiJpeWpzMmR1aml5bXR6ejUiLCJ0eXBlIjoiZmlsZSJ9.WjOnK8L4B59scRxJ2Xa2odTb7k4ZBb8uyH39sABdwWg&expires=86400" alt="neon crown" class="crown-img" />
+            </div>
+
+            <!-- Bottom Section -->
+            <div class="footer">
+                <div class="logo">LedFy</div>
+                <div class="cta">UPGRADE TODAY</div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
