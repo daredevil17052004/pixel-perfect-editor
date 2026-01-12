@@ -175,13 +175,24 @@ export function DesignCanvas({
         const el = iframeDoc.querySelector(`[data-editor-id="${id}"]`);
         if (el) {
           const rect = el.getBoundingClientRect();
-          // Calculate position relative to container, accounting for iframe position
-          newRects.set(id, new DOMRect(
-            iframeRect.left - containerRect.left + rect.left + container.scrollLeft,
-            iframeRect.top - containerRect.top + rect.top + container.scrollTop,
-            rect.width,
-            rect.height
-          ));
+          // rect is in iframe's coordinate space; scale to match the parent transform
+          const scaled = {
+            left: rect.left * zoom,
+            top: rect.top * zoom,
+            width: rect.width * zoom,
+            height: rect.height * zoom,
+          };
+
+          // Calculate position relative to scroll container
+          newRects.set(
+            id,
+            new DOMRect(
+              iframeRect.left - containerRect.left + scaled.left + container.scrollLeft,
+              iframeRect.top - containerRect.top + scaled.top + container.scrollTop,
+              scaled.width,
+              scaled.height
+            )
+          );
         }
       });
 
@@ -192,12 +203,21 @@ export function DesignCanvas({
         const el = iframeDoc.querySelector(`[data-editor-id="${hoveredId}"]`);
         if (el) {
           const rect = el.getBoundingClientRect();
-          setHoverRect(new DOMRect(
-            iframeRect.left - containerRect.left + rect.left + container.scrollLeft,
-            iframeRect.top - containerRect.top + rect.top + container.scrollTop,
-            rect.width,
-            rect.height
-          ));
+          const scaled = {
+            left: rect.left * zoom,
+            top: rect.top * zoom,
+            width: rect.width * zoom,
+            height: rect.height * zoom,
+          };
+
+          setHoverRect(
+            new DOMRect(
+              iframeRect.left - containerRect.left + scaled.left + container.scrollLeft,
+              iframeRect.top - containerRect.top + scaled.top + container.scrollTop,
+              scaled.width,
+              scaled.height
+            )
+          );
         } else {
           setHoverRect(null);
         }
@@ -220,7 +240,7 @@ export function DesignCanvas({
       resizeObserver.disconnect();
       currentContainer?.removeEventListener('scroll', updateRects);
     };
-  }, [selectedIds, hoveredId, document]);
+  }, [selectedIds, hoveredId, document, zoom]);
 
   // Handle drag/resize
   const handleMoveStart = useCallback((e: React.MouseEvent, elementId: string) => {

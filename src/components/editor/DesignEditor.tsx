@@ -135,6 +135,23 @@ export function DesignEditor() {
     }
   }, [state.selection.selectedIds, sendToBack]);
 
+  const handleNudge = useCallback((dx: number, dy: number) => {
+    if (!state.document || state.selection.selectedIds.length !== 1) return;
+
+    const id = state.selection.selectedIds[0];
+    const el = findElementById(state.document.elements, id);
+    if (!el) return;
+
+    const left = parseFloat(el.styles?.left || '0') || 0;
+    const top = parseFloat(el.styles?.top || '0') || 0;
+
+    updateElementStyle(id, {
+      left: `${left + dx}px`,
+      top: `${top + dy}px`,
+      position: el.styles?.position || 'absolute',
+    });
+  }, [state.document, state.selection.selectedIds, updateElementStyle]);
+
   const handleClearCanvas = useCallback(() => {
     clearCanvas();
     toast.success('Canvas cleared');
@@ -162,6 +179,7 @@ export function DesignEditor() {
         onExport={handleExport}
         onBringToFront={handleBringToFront}
         onSendToBack={handleSendToBack}
+        onNudge={handleNudge}
         onClearCanvas={handleClearCanvas}
         hasSelection={state.selection.selectedIds.length > 0}
         hasDocument={!!state.document}
