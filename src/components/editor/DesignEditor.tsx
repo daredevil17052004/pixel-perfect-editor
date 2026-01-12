@@ -2,11 +2,13 @@ import { useCallback, useRef, useState } from 'react';
 import { EditorToolbar } from './EditorToolbar';
 import { DesignCanvas } from './DesignCanvas';
 import { LayersPanel } from './LayersPanel';
+import { AddElementsPanel } from './AddElementsPanel';
 import { PropertiesPanel } from './PropertiesPanel';
 import { TemplateGallery } from './TemplateGallery';
 import { useEditorState } from '@/hooks/useEditorState';
 import { parseHTML, findElementById, elementsToHTML } from '@/utils/htmlParser';
 import { toast } from 'sonner';
+import { ElementNode } from '@/types/editor';
 
 export function DesignEditor() {
   const {
@@ -23,6 +25,8 @@ export function DesignEditor() {
     sendToBack,
     clearCanvas,
     addFont,
+    addElement,
+    deleteElement,
   } = useEditorState();
 
   const [showTemplateGallery, setShowTemplateGallery] = useState(true);
@@ -136,6 +140,10 @@ export function DesignEditor() {
     toast.success('Canvas cleared');
   }, [clearCanvas]);
 
+  const handleAddElement = useCallback((element: ElementNode) => {
+    addElement(element);
+  }, [addElement]);
+
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       <input
@@ -160,6 +168,11 @@ export function DesignEditor() {
       />
 
       <div className="flex-1 flex overflow-hidden">
+        {/* Left sidebar with layers and add elements */}
+        <div className="flex flex-col border-r border-border">
+          <AddElementsPanel onAddElement={handleAddElement} />
+        </div>
+
         <LayersPanel
           elements={state.document?.elements || []}
           selectedIds={state.selection.selectedIds}

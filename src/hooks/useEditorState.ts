@@ -182,6 +182,63 @@ export function useEditorState() {
     });
   }, []);
 
+  const addElement = useCallback((element: ElementNode) => {
+    setState((prev) => {
+      // If no document exists, create a blank one
+      if (!prev.document) {
+        return {
+          ...prev,
+          document: {
+            id: 'new-doc',
+            name: 'Untitled Design',
+            width: 800,
+            height: 600,
+            elements: [element],
+            styles: '',
+            fonts: [],
+          },
+          selection: { selectedIds: [element.id], hoveredId: null },
+        };
+      }
+
+      return {
+        ...prev,
+        document: {
+          ...prev.document,
+          elements: [...prev.document.elements, element],
+        },
+        selection: { selectedIds: [element.id], hoveredId: null },
+      };
+    });
+  }, []);
+
+  const deleteElement = useCallback((elementId: string) => {
+    setState((prev) => {
+      if (!prev.document) return prev;
+
+      const removeNode = (nodes: ElementNode[]): ElementNode[] => {
+        return nodes
+          .filter((node) => node.id !== elementId)
+          .map((node) => ({
+            ...node,
+            children: removeNode(node.children),
+          }));
+      };
+
+      return {
+        ...prev,
+        document: {
+          ...prev.document,
+          elements: removeNode(prev.document.elements),
+        },
+        selection: {
+          ...prev.selection,
+          selectedIds: prev.selection.selectedIds.filter((id) => id !== elementId),
+        },
+      };
+    });
+  }, []);
+
   const updateElementStyle = useCallback((elementId: string, styleKey: string, value: string) => {
     setState((prev) => {
       if (!prev.document) return prev;
@@ -226,5 +283,7 @@ export function useEditorState() {
     sendToBack,
     clearCanvas,
     addFont,
+    addElement,
+    deleteElement,
   };
 }
