@@ -56,13 +56,25 @@ export function DesignCanvas({
     const iframeDoc = iframe.contentDocument;
     if (!iframeDoc) return;
 
+    // Build font imports - support both @import statements and link hrefs
+    const fontImports = document.fonts
+      .map(font => {
+        if (font.startsWith('@import')) {
+          return font;
+        }
+        return `@import url('${font}')`;
+      })
+      .join(';\n');
+
     const html = `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
           <style>
-            ${document.fonts.join(';\n')}
+            ${fontImports}
             * { box-sizing: border-box; }
             body { 
               margin: 0; 
@@ -81,6 +93,11 @@ export function DesignCanvas({
             }
             [data-editor-id][style*="position: absolute"] {
               cursor: move;
+            }
+            [data-editor-id][contenteditable="true"] {
+              outline: 2px solid hsl(217, 91%, 60%);
+              outline-offset: 2px;
+              cursor: text;
             }
             ${document.styles}
           </style>
@@ -104,14 +121,25 @@ export function DesignCanvas({
 
     const handleDoubleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      const editorId = target.closest('[data-editor-id]')?.getAttribute('data-editor-id');
-      if (editorId) {
-        // Check if element has text content
+      const editableElement = target.closest('[data-editor-id]') as HTMLElement;
+      const editorId = editableElement?.getAttribute('data-editor-id');
+      if (editorId && editableElement) {
+        // Make any element with text content editable
         const element = findElementById(document.elements, editorId);
-        if (element && (element.tagName === 'h1' || element.tagName === 'h2' || element.tagName === 'h3' || 
-            element.tagName === 'p' || element.tagName === 'span' || element.tagName === 'div')) {
-          target.setAttribute('contenteditable', 'true');
-          target.focus();
+        const nonEditableTags = ['img', 'video', 'audio', 'iframe', 'canvas', 'svg', 'br', 'hr', 'input', 'button'];
+        
+        if (element && !nonEditableTags.includes(element.tagName.toLowerCase())) {
+          editableElement.setAttribute('contenteditable', 'true');
+          editableElement.focus();
+          
+          // Place cursor at end of text
+          const range = iframeDoc.createRange();
+          const selection = iframeDoc.getSelection();
+          range.selectNodeContents(editableElement);
+          range.collapse(false);
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+          
           onStartTextEditing(editorId);
         }
       }
@@ -125,11 +153,19 @@ export function DesignCanvas({
 
     const handleInput = (e: Event) => {
       const target = e.target as HTMLElement;
-      const editorId = target.getAttribute('data-editor-id');
+      const editableElement = target.closest('[data-editor-id]') as HTMLElement;
+      const editorId = editableElement?.getAttribute('data-editor-id') || target.getAttribute('data-editor-id');
+      
       if (editorId && editingElementId === editorId) {
         const element = findElementById(document.elements, editorId);
-        if (element && element.children.length > 0 && element.children[0].isTextNode) {
-          onUpdateElement(element.children[0].id, { textContent: target.textContent || '' });
+        if (element) {
+          // Check if element has a text node child
+          if (element.children.length > 0 && element.children[0].isTextNode) {
+            onUpdateElement(element.children[0].id, { textContent: editableElement?.textContent || target.textContent || '' });
+          } else {
+            // Update element's direct textContent if no text node child
+            onUpdateElement(editorId, { textContent: editableElement?.textContent || target.textContent || '' });
+          }
         }
       }
     };
