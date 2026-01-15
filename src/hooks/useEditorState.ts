@@ -191,8 +191,8 @@ export function useEditorState() {
           document: {
             id: 'new-doc',
             name: 'Untitled Design',
-            width: 1200,
-            height: 800,
+            width: 1080,
+            height: 1080,
             elements: [element],
             styles: '',
             fonts: [],
