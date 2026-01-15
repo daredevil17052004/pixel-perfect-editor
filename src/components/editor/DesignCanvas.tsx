@@ -3,6 +3,21 @@ import { DesignDocument, ElementNode, ResizeHandle, DragState } from '@/types/ed
 import { elementsToHTML, findElementById } from '@/utils/htmlParser';
 import { SelectionOverlay } from './SelectionOverlay';
 
+// Fixed canvas size
+const CANVAS_SIZE = 1080;
+
+// Throttle utility for smooth performance
+function throttle<T extends (...args: unknown[]) => void>(func: T, limit: number): T {
+  let inThrottle = false;
+  return ((...args: unknown[]) => {
+    if (!inThrottle) {
+      func(...args);
+      inThrottle = true;
+      setTimeout(() => (inThrottle = false), limit);
+    }
+  }) as T;
+}
+
 interface DesignCanvasProps {
   document: DesignDocument | null;
   selectedIds: string[];
@@ -36,8 +51,11 @@ export function DesignCanvas({
 }: DesignCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const pendingDragUpdate = useRef(false);
   const [selectionRects, setSelectionRects] = useState<Map<string, DOMRect>>(new Map());
   const [hoverRect, setHoverRect] = useState<DOMRect | null>(null);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
     startX: 0,
@@ -46,11 +64,6 @@ export function DesignCanvas({
     currentY: 0,
     elementId: null,
     handle: null,
-  });
-
-  const [iframeSize, setIframeSize] = useState<{ width: number; height: number }>({
-    width: 1200,
-    height: 800,
   });
 
   // Render document HTML into iframe
@@ -121,33 +134,23 @@ export function DesignCanvas({
     iframeDoc.write(html);
     iframeDoc.close();
 
-    // Auto-size iframe to fit content after it loads
-    const resizeIframe = () => {
-      if (!iframeDoc.body) return;
-      
-      // Get the actual content dimensions
-      const bodyRect = iframeDoc.body.getBoundingClientRect();
-      const scrollWidth = Math.max(iframeDoc.body.scrollWidth, iframeDoc.documentElement.scrollWidth);
-      const scrollHeight = Math.max(iframeDoc.body.scrollHeight, iframeDoc.documentElement.scrollHeight);
-      
-      // Use the larger of document dimensions or content dimensions
-      const contentWidth = Math.max(document.width, scrollWidth, bodyRect.width, 1200);
-      const contentHeight = Math.max(document.height, scrollHeight, bodyRect.height, 800);
-      
-      setIframeSize({
-        width: contentWidth,
-        height: contentHeight,
-      });
+    // Load fonts properly using FontFace API
+    const loadFonts = async () => {
+      if (iframeDoc.fonts) {
+        try {
+          await iframeDoc.fonts.ready;
+          setFontsLoaded(true);
+        } catch (err) {
+          console.warn('Font loading failed:', err);
+          setFontsLoaded(true); // Continue anyway with fallback
+        }
+      } else {
+        setFontsLoaded(true);
+      }
     };
 
-    // Resize after fonts load and content settles
-    setTimeout(resizeIframe, 100);
-    setTimeout(resizeIframe, 500);
-    
-    // Also resize when fonts finish loading
-    if (iframeDoc.fonts) {
-      iframeDoc.fonts.ready.then(resizeIframe);
-    }
+    // Delayed font loading to ensure styles are applied
+    setTimeout(loadFonts, 100);
 
     // Setup event handlers after content is loaded
     const handleClick = (e: MouseEvent) => {
@@ -182,11 +185,12 @@ export function DesignCanvas({
       }
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
+    // Throttled hover handler for better performance
+    const handleMouseMove = throttle((e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const editorId = target.closest('[data-editor-id]')?.getAttribute('data-editor-id');
       onHoverElement(editorId || null);
-    };
+    }, 16); // ~60fps
 
     const handleInput = (e: Event) => {
       const target = e.target as HTMLElement;
@@ -343,31 +347,33 @@ export function DesignCanvas({
   useEffect(() => {
     if (!dragState.isDragging) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      setDragState((prev) => ({
-        ...prev,
-        currentX: e.clientX,
-        currentY: e.clientY,
-      }));
+    // Store latest mouse position for RAF
+    let latestX = dragState.currentX;
+    let latestY = dragState.currentY;
 
-      const deltaX = (e.clientX - dragState.startX) / zoom;
-      const deltaY = (e.clientY - dragState.startY) / zoom;
+    const applyDrag = () => {
+      const deltaX = (latestX - dragState.startX) / zoom;
+      const deltaY = (latestY - dragState.startY) / zoom;
 
-      if (!iframeRef.current?.contentDocument || !dragState.elementId) return;
+      if (!iframeRef.current?.contentDocument || !dragState.elementId) {
+        pendingDragUpdate.current = false;
+        return;
+      }
+      
       const el = iframeRef.current.contentDocument.querySelector(`[data-editor-id="${dragState.elementId}"]`) as HTMLElement;
-      if (!el) return;
+      if (!el) {
+        pendingDragUpdate.current = false;
+        return;
+      }
 
       if (dragState.handle === 'move') {
-        // Check if element is absolutely positioned
         const computedStyle = iframeRef.current.contentWindow?.getComputedStyle(el);
         const position = computedStyle?.position;
         
         if (position === 'absolute') {
-          // For absolute positioned elements, update left/top
           const currentLeft = parseFloat(el.style.left) || 0;
           const currentTop = parseFloat(el.style.top) || 0;
           
-          // Get stored initial values or set them
           if (!el.dataset.dragStartLeft) {
             el.dataset.dragStartLeft = String(currentLeft);
             el.dataset.dragStartTop = String(currentTop);
@@ -379,15 +385,12 @@ export function DesignCanvas({
           el.style.left = `${startLeft + deltaX}px`;
           el.style.top = `${startTop + deltaY}px`;
         } else {
-          // For other elements, use transform
           el.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
         }
       } else if (dragState.handle) {
-        // Resize logic
         const currentWidth = el.offsetWidth;
         const currentHeight = el.offsetHeight;
         
-        // Store initial dimensions
         if (!el.dataset.dragStartWidth) {
           el.dataset.dragStartWidth = String(currentWidth);
           el.dataset.dragStartHeight = String(currentHeight);
@@ -433,9 +436,34 @@ export function DesignCanvas({
           }
         }
       }
+      
+      pendingDragUpdate.current = false;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      latestX = e.clientX;
+      latestY = e.clientY;
+      
+      setDragState((prev) => ({
+        ...prev,
+        currentX: e.clientX,
+        currentY: e.clientY,
+      }));
+
+      // Use requestAnimationFrame for smooth dragging
+      if (!pendingDragUpdate.current) {
+        pendingDragUpdate.current = true;
+        animationFrameRef.current = requestAnimationFrame(applyDrag);
+      }
     };
 
     const handleMouseUp = () => {
+      // Cancel any pending animation frame
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      
       if (dragState.elementId && dragState.handle) {
         if (!iframeRef.current?.contentDocument) return;
         const el = iframeRef.current.contentDocument.querySelector(`[data-editor-id="${dragState.elementId}"]`) as HTMLElement;
@@ -455,7 +483,6 @@ export function DesignCanvas({
             if (el.style.top) onUpdateElementStyle(dragState.elementId, 'top', el.style.top);
           }
           
-          // Clean up drag data attributes
           delete el.dataset.dragStartLeft;
           delete el.dataset.dragStartTop;
           delete el.dataset.dragStartWidth;
@@ -463,6 +490,7 @@ export function DesignCanvas({
         }
       }
       
+      pendingDragUpdate.current = false;
       setDragState({
         isDragging: false,
         startX: 0,
@@ -474,12 +502,16 @@ export function DesignCanvas({
       });
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
+    // Use passive event listeners for better performance
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, [dragState, zoom, onUpdateElementStyle]);
 
@@ -506,27 +538,27 @@ export function DesignCanvas({
     >
       {/* Canvas wrapper with padding for scrolling */}
       <div 
-        className="min-w-full min-h-full p-8 flex items-start justify-center"
+        className="min-w-full min-h-full p-8 flex items-center justify-center"
         style={{
-          minWidth: `${iframeSize.width * zoom + 100}px`,
-          minHeight: `${iframeSize.height * zoom + 100}px`,
+          minWidth: `${CANVAS_SIZE * zoom + 100}px`,
+          minHeight: `${CANVAS_SIZE * zoom + 100}px`,
         }}
       >
         <div
           className="canvas-container relative"
           style={{
             transform: `scale(${zoom})`,
-            transformOrigin: 'top center',
+            transformOrigin: 'center center',
           }}
         >
-          {/* Design iframe */}
+          {/* Design iframe - fixed 1080x1080 */}
           <iframe
             ref={iframeRef}
             title="Design Canvas"
             className="shadow-2xl rounded-sm"
             style={{
-              width: iframeSize.width,
-              height: iframeSize.height,
+              width: CANVAS_SIZE,
+              height: CANVAS_SIZE,
               border: 'none',
               background: 'white',
             }}
