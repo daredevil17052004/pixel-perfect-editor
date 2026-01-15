@@ -3,21 +3,6 @@ import { DesignDocument, ElementNode, ResizeHandle, DragState } from '@/types/ed
 import { elementsToHTML, findElementById } from '@/utils/htmlParser';
 import { SelectionOverlay } from './SelectionOverlay';
 
-// Fixed canvas size
-const CANVAS_SIZE = 1080;
-
-// Throttle utility for smooth performance
-function throttle<T extends (...args: unknown[]) => void>(func: T, limit: number): T {
-  let inThrottle = false;
-  return ((...args: unknown[]) => {
-    if (!inThrottle) {
-      func(...args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
-    }
-  }) as T;
-}
-
 interface DesignCanvasProps {
   document: DesignDocument | null;
   selectedIds: string[];
@@ -51,11 +36,8 @@ export function DesignCanvas({
 }: DesignCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const pendingDragUpdate = useRef(false);
   const [selectionRects, setSelectionRects] = useState<Map<string, DOMRect>>(new Map());
   const [hoverRect, setHoverRect] = useState<DOMRect | null>(null);
-  const [fontsLoaded, setFontsLoaded] = useState(false);
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
     startX: 0,
@@ -74,36 +56,20 @@ export function DesignCanvas({
     const iframeDoc = iframe.contentDocument;
     if (!iframeDoc) return;
 
-    // Build font imports - support both @import statements and link hrefs
-    const fontImports = document.fonts
-      .map(font => {
-        if (font.startsWith('@import')) {
-          return font;
-        }
-        // Handle link hrefs for Google Fonts
-        if (font.startsWith('http') || font.startsWith('//')) {
-          return `@import url('${font}');`;
-        }
-        return `@import url('${font}');`;
-      })
-      .join('\n');
-
     const html = `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
           <style>
-            ${fontImports}
+            ${document.fonts.join(';\n')}
             * { box-sizing: border-box; }
-            html, body { 
+            body { 
               margin: 0; 
               padding: 0; 
-              background: white;
-              width: 100%;
-              min-height: 100%;
+              background: transparent;
+              min-height: 100vh;
+              position: relative;
             }
             [data-editor-id] {
               cursor: pointer;
@@ -115,11 +81,6 @@ export function DesignCanvas({
             }
             [data-editor-id][style*="position: absolute"] {
               cursor: move;
-            }
-            [data-editor-id][contenteditable="true"] {
-              outline: 2px solid hsl(217, 91%, 60%);
-              outline-offset: 2px;
-              cursor: text;
             }
             ${document.styles}
           </style>
@@ -134,24 +95,6 @@ export function DesignCanvas({
     iframeDoc.write(html);
     iframeDoc.close();
 
-    // Load fonts properly using FontFace API
-    const loadFonts = async () => {
-      if (iframeDoc.fonts) {
-        try {
-          await iframeDoc.fonts.ready;
-          setFontsLoaded(true);
-        } catch (err) {
-          console.warn('Font loading failed:', err);
-          setFontsLoaded(true); // Continue anyway with fallback
-        }
-      } else {
-        setFontsLoaded(true);
-      }
-    };
-
-    // Delayed font loading to ensure styles are applied
-    setTimeout(loadFonts, 100);
-
     // Setup event handlers after content is loaded
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -161,52 +104,32 @@ export function DesignCanvas({
 
     const handleDoubleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      const editableElement = target.closest('[data-editor-id]') as HTMLElement;
-      const editorId = editableElement?.getAttribute('data-editor-id');
-      if (editorId && editableElement) {
-        // Make any element with text content editable
+      const editorId = target.closest('[data-editor-id]')?.getAttribute('data-editor-id');
+      if (editorId) {
+        // Check if element has text content
         const element = findElementById(document.elements, editorId);
-        const nonEditableTags = ['img', 'video', 'audio', 'iframe', 'canvas', 'svg', 'br', 'hr', 'input', 'button'];
-        
-        if (element && !nonEditableTags.includes(element.tagName.toLowerCase())) {
-          editableElement.setAttribute('contenteditable', 'true');
-          editableElement.focus();
-          
-          // Place cursor at end of text
-          const range = iframeDoc.createRange();
-          const selection = iframeDoc.getSelection();
-          range.selectNodeContents(editableElement);
-          range.collapse(false);
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-          
+        if (element && (element.tagName === 'h1' || element.tagName === 'h2' || element.tagName === 'h3' || 
+            element.tagName === 'p' || element.tagName === 'span' || element.tagName === 'div')) {
+          target.setAttribute('contenteditable', 'true');
+          target.focus();
           onStartTextEditing(editorId);
         }
       }
     };
 
-    // Throttled hover handler for better performance
-    const handleMouseMove = throttle((e: MouseEvent) => {
+    const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const editorId = target.closest('[data-editor-id]')?.getAttribute('data-editor-id');
       onHoverElement(editorId || null);
-    }, 16); // ~60fps
+    };
 
     const handleInput = (e: Event) => {
       const target = e.target as HTMLElement;
-      const editableElement = target.closest('[data-editor-id]') as HTMLElement;
-      const editorId = editableElement?.getAttribute('data-editor-id') || target.getAttribute('data-editor-id');
-      
+      const editorId = target.getAttribute('data-editor-id');
       if (editorId && editingElementId === editorId) {
         const element = findElementById(document.elements, editorId);
-        if (element) {
-          // Check if element has a text node child
-          if (element.children.length > 0 && element.children[0].isTextNode) {
-            onUpdateElement(element.children[0].id, { textContent: editableElement?.textContent || target.textContent || '' });
-          } else {
-            // Update element's direct textContent if no text node child
-            onUpdateElement(editorId, { textContent: editableElement?.textContent || target.textContent || '' });
-          }
+        if (element && element.children.length > 0 && element.children[0].isTextNode) {
+          onUpdateElement(element.children[0].id, { textContent: target.textContent || '' });
         }
       }
     };
@@ -347,33 +270,31 @@ export function DesignCanvas({
   useEffect(() => {
     if (!dragState.isDragging) return;
 
-    // Store latest mouse position for RAF
-    let latestX = dragState.currentX;
-    let latestY = dragState.currentY;
+    const handleMouseMove = (e: MouseEvent) => {
+      setDragState((prev) => ({
+        ...prev,
+        currentX: e.clientX,
+        currentY: e.clientY,
+      }));
 
-    const applyDrag = () => {
-      const deltaX = (latestX - dragState.startX) / zoom;
-      const deltaY = (latestY - dragState.startY) / zoom;
+      const deltaX = (e.clientX - dragState.startX) / zoom;
+      const deltaY = (e.clientY - dragState.startY) / zoom;
 
-      if (!iframeRef.current?.contentDocument || !dragState.elementId) {
-        pendingDragUpdate.current = false;
-        return;
-      }
-      
+      if (!iframeRef.current?.contentDocument || !dragState.elementId) return;
       const el = iframeRef.current.contentDocument.querySelector(`[data-editor-id="${dragState.elementId}"]`) as HTMLElement;
-      if (!el) {
-        pendingDragUpdate.current = false;
-        return;
-      }
+      if (!el) return;
 
       if (dragState.handle === 'move') {
+        // Check if element is absolutely positioned
         const computedStyle = iframeRef.current.contentWindow?.getComputedStyle(el);
         const position = computedStyle?.position;
         
         if (position === 'absolute') {
+          // For absolute positioned elements, update left/top
           const currentLeft = parseFloat(el.style.left) || 0;
           const currentTop = parseFloat(el.style.top) || 0;
           
+          // Get stored initial values or set them
           if (!el.dataset.dragStartLeft) {
             el.dataset.dragStartLeft = String(currentLeft);
             el.dataset.dragStartTop = String(currentTop);
@@ -385,12 +306,15 @@ export function DesignCanvas({
           el.style.left = `${startLeft + deltaX}px`;
           el.style.top = `${startTop + deltaY}px`;
         } else {
+          // For other elements, use transform
           el.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
         }
       } else if (dragState.handle) {
+        // Resize logic
         const currentWidth = el.offsetWidth;
         const currentHeight = el.offsetHeight;
         
+        // Store initial dimensions
         if (!el.dataset.dragStartWidth) {
           el.dataset.dragStartWidth = String(currentWidth);
           el.dataset.dragStartHeight = String(currentHeight);
@@ -436,34 +360,9 @@ export function DesignCanvas({
           }
         }
       }
-      
-      pendingDragUpdate.current = false;
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      latestX = e.clientX;
-      latestY = e.clientY;
-      
-      setDragState((prev) => ({
-        ...prev,
-        currentX: e.clientX,
-        currentY: e.clientY,
-      }));
-
-      // Use requestAnimationFrame for smooth dragging
-      if (!pendingDragUpdate.current) {
-        pendingDragUpdate.current = true;
-        animationFrameRef.current = requestAnimationFrame(applyDrag);
-      }
     };
 
     const handleMouseUp = () => {
-      // Cancel any pending animation frame
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-      
       if (dragState.elementId && dragState.handle) {
         if (!iframeRef.current?.contentDocument) return;
         const el = iframeRef.current.contentDocument.querySelector(`[data-editor-id="${dragState.elementId}"]`) as HTMLElement;
@@ -483,6 +382,7 @@ export function DesignCanvas({
             if (el.style.top) onUpdateElementStyle(dragState.elementId, 'top', el.style.top);
           }
           
+          // Clean up drag data attributes
           delete el.dataset.dragStartLeft;
           delete el.dataset.dragStartTop;
           delete el.dataset.dragStartWidth;
@@ -490,7 +390,6 @@ export function DesignCanvas({
         }
       }
       
-      pendingDragUpdate.current = false;
       setDragState({
         isDragging: false,
         startX: 0,
@@ -502,16 +401,12 @@ export function DesignCanvas({
       });
     };
 
-    // Use passive event listeners for better performance
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
     };
   }, [dragState, zoom, onUpdateElementStyle]);
 
@@ -529,41 +424,34 @@ export function DesignCanvas({
   return (
     <div 
       ref={containerRef}
-      className="flex-1 overflow-auto bg-muted/50 relative"
+      className="flex-1 overflow-auto bg-canvas relative"
       onClick={(e) => {
         if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.canvas-container')) {
           onSelectElement(null);
         }
       }}
     >
-      {/* Canvas wrapper with padding for scrolling */}
-      <div 
-        className="min-w-full min-h-full p-8 flex items-center justify-center"
+      <div
+        className="canvas-container absolute"
         style={{
-          minWidth: `${CANVAS_SIZE * zoom + 100}px`,
-          minHeight: `${CANVAS_SIZE * zoom + 100}px`,
+          left: '50%',
+          top: '50%',
+          transform: `translate(-50%, -50%) scale(${zoom})`,
+          transformOrigin: 'center center',
         }}
       >
-        <div
-          className="canvas-container relative"
+        {/* Design iframe */}
+        <iframe
+          ref={iframeRef}
+          title="Design Canvas"
+          className="shadow-2xl"
           style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: 'center center',
+            width: document.width,
+            height: document.height,
+            border: 'none',
+            background: 'white',
           }}
-        >
-          {/* Design iframe - fixed 1080x1080 */}
-          <iframe
-            ref={iframeRef}
-            title="Design Canvas"
-            className="shadow-2xl rounded-sm"
-            style={{
-              width: CANVAS_SIZE,
-              height: CANVAS_SIZE,
-              border: 'none',
-              background: 'white',
-            }}
-          />
-        </div>
+        />
       </div>
 
       {/* Selection overlays - rendered outside iframe */}

@@ -17,9 +17,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Trash2,
-  Save,
-  Loader2,
-  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -35,12 +32,6 @@ interface EditorToolbarProps {
   onSendToBack?: () => void;
   onClearCanvas?: () => void;
   onNudge?: (dx: number, dy: number) => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  onSave?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
-  saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
   hasSelection?: boolean;
   hasDocument?: boolean;
 }
@@ -55,12 +46,6 @@ export function EditorToolbar({
   onSendToBack,
   onClearCanvas,
   onNudge,
-  onUndo,
-  onRedo,
-  onSave,
-  canUndo = false,
-  canRedo = false,
-  saveStatus = 'idle',
   hasSelection = false,
   hasDocument = false,
 }: EditorToolbarProps) {
@@ -201,13 +186,7 @@ export function EditorToolbar({
       <div className="flex items-center gap-0.5 px-2">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="w-9 h-9 p-0" 
-              disabled={!canUndo}
-              onClick={onUndo}
-            >
+            <Button variant="ghost" size="sm" className="w-9 h-9 p-0" disabled>
               <Undo2 className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
@@ -215,53 +194,12 @@ export function EditorToolbar({
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="w-9 h-9 p-0" 
-              disabled={!canRedo}
-              onClick={onRedo}
-            >
+            <Button variant="ghost" size="sm" className="w-9 h-9 p-0" disabled>
               <Redo2 className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Redo <span className="text-muted-foreground ml-1">⌘⇧Z</span></TooltipContent>
         </Tooltip>
-      </div>
-
-      <Separator orientation="vertical" className="h-6 bg-border" />
-
-      {/* Save Status */}
-      <div className="flex items-center gap-1 px-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="w-9 h-9 p-0"
-              onClick={onSave}
-              disabled={saveStatus === 'saving' || saveStatus === 'saved'}
-            >
-              {saveStatus === 'saving' ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : saveStatus === 'saved' ? (
-                <Check className="w-4 h-4 text-green-500" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {saveStatus === 'saving' ? 'Saving...' : 
-             saveStatus === 'saved' ? 'All changes saved' : 
-             'Save ⌘S'}
-          </TooltipContent>
-        </Tooltip>
-        <span className="text-xs text-muted-foreground hidden sm:block">
-          {saveStatus === 'saving' ? 'Saving...' : 
-           saveStatus === 'saved' ? 'Saved' : 
-           saveStatus === 'error' ? 'Error' : ''}
-        </span>
       </div>
 
       <div className="flex-1" />
