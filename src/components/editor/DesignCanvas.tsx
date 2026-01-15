@@ -48,6 +48,11 @@ export function DesignCanvas({
     handle: null,
   });
 
+  const [iframeSize, setIframeSize] = useState<{ width: number; height: number }>({
+    width: 1200,
+    height: 800,
+  });
+
   // Render document HTML into iframe
   useEffect(() => {
     if (!document || !iframeRef.current) return;
@@ -62,9 +67,13 @@ export function DesignCanvas({
         if (font.startsWith('@import')) {
           return font;
         }
-        return `@import url('${font}')`;
+        // Handle link hrefs for Google Fonts
+        if (font.startsWith('http') || font.startsWith('//')) {
+          return `@import url('${font}');`;
+        }
+        return `@import url('${font}');`;
       })
-      .join(';\n');
+      .join('\n');
 
     const html = `
       <!DOCTYPE html>
@@ -76,12 +85,12 @@ export function DesignCanvas({
           <style>
             ${fontImports}
             * { box-sizing: border-box; }
-            body { 
+            html, body { 
               margin: 0; 
               padding: 0; 
-              background: transparent;
-              min-height: 100vh;
-              position: relative;
+              background: white;
+              width: 100%;
+              min-height: 100%;
             }
             [data-editor-id] {
               cursor: pointer;
@@ -111,6 +120,34 @@ export function DesignCanvas({
     iframeDoc.open();
     iframeDoc.write(html);
     iframeDoc.close();
+
+    // Auto-size iframe to fit content after it loads
+    const resizeIframe = () => {
+      if (!iframeDoc.body) return;
+      
+      // Get the actual content dimensions
+      const bodyRect = iframeDoc.body.getBoundingClientRect();
+      const scrollWidth = Math.max(iframeDoc.body.scrollWidth, iframeDoc.documentElement.scrollWidth);
+      const scrollHeight = Math.max(iframeDoc.body.scrollHeight, iframeDoc.documentElement.scrollHeight);
+      
+      // Use the larger of document dimensions or content dimensions
+      const contentWidth = Math.max(document.width, scrollWidth, bodyRect.width, 1200);
+      const contentHeight = Math.max(document.height, scrollHeight, bodyRect.height, 800);
+      
+      setIframeSize({
+        width: contentWidth,
+        height: contentHeight,
+      });
+    };
+
+    // Resize after fonts load and content settles
+    setTimeout(resizeIframe, 100);
+    setTimeout(resizeIframe, 500);
+    
+    // Also resize when fonts finish loading
+    if (iframeDoc.fonts) {
+      iframeDoc.fonts.ready.then(resizeIframe);
+    }
 
     // Setup event handlers after content is loaded
     const handleClick = (e: MouseEvent) => {
@@ -460,34 +497,41 @@ export function DesignCanvas({
   return (
     <div 
       ref={containerRef}
-      className="flex-1 overflow-auto bg-canvas relative"
+      className="flex-1 overflow-auto bg-muted/50 relative"
       onClick={(e) => {
         if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.canvas-container')) {
           onSelectElement(null);
         }
       }}
     >
-      <div
-        className="canvas-container absolute"
+      {/* Canvas wrapper with padding for scrolling */}
+      <div 
+        className="min-w-full min-h-full p-8 flex items-start justify-center"
         style={{
-          left: '50%',
-          top: '50%',
-          transform: `translate(-50%, -50%) scale(${zoom})`,
-          transformOrigin: 'center center',
+          minWidth: `${iframeSize.width * zoom + 100}px`,
+          minHeight: `${iframeSize.height * zoom + 100}px`,
         }}
       >
-        {/* Design iframe */}
-        <iframe
-          ref={iframeRef}
-          title="Design Canvas"
-          className="shadow-2xl"
+        <div
+          className="canvas-container relative"
           style={{
-            width: document.width,
-            height: document.height,
-            border: 'none',
-            background: 'white',
+            transform: `scale(${zoom})`,
+            transformOrigin: 'top center',
           }}
-        />
+        >
+          {/* Design iframe */}
+          <iframe
+            ref={iframeRef}
+            title="Design Canvas"
+            className="shadow-2xl rounded-sm"
+            style={{
+              width: iframeSize.width,
+              height: iframeSize.height,
+              border: 'none',
+              background: 'white',
+            }}
+          />
+        </div>
       </div>
 
       {/* Selection overlays - rendered outside iframe */}
