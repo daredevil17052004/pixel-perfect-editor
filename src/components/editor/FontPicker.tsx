@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Check, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { loadGoogleFont } from '@/utils/fontLoader';
 
 interface FontPickerProps {
   value: string;
@@ -74,7 +75,8 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
     setLoadedFonts((prev) => new Set([...prev, fontName]));
   };
 
-  const handleFontSelect = (font: string) => {
+  const handleFontSelect = async (font: string) => {
+    await loadGoogleFont(font)
     loadFont(font);
     onChange(font);
   };
